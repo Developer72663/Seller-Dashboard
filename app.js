@@ -11,9 +11,26 @@ const rateLimit = require('express-rate-limit');
 const passport = require('passport');
 const multer = require('multer');
 const fs = require('fs');
-const cron = require('node-cron');
 
-const { releaseFundsJob } = require('./jobs/releaseFunds');
+// Try to load node-cron, fallback gracefully if not installed
+let cron = null;
+try {
+  cron = require('node-cron');
+  console.log('✅ node-cron loaded');
+} catch (err) {
+  console.warn('⚠️ node-cron not installed. Daily funds release job will not run automatically.');
+  console.warn('   Run: npm install node-cron');
+}
+
+// Try to load release funds job
+let releaseFundsJob = null;
+try {
+  const releaseModule = require('./jobs/releaseFunds');
+  releaseFundsJob = releaseModule.releaseFundsJob;
+  console.log('✅ Release funds job loaded');
+} catch (err) {
+  console.warn('⚠️ Release funds job not available:', err.message);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -304,15 +321,17 @@ app.use((req, res) => {
 // CRON JOB: RELEASE FUNDS AFTER RETURN POLICY ENDS
 // Runs every day at midnight (00:00)
 // ═══════════════════════════════════════════════════
-cron.schedule('0 0 * * *', () => {
-  console.log('⏰ Running daily funds release job...');
-  releaseFundsJob().catch(err => {
-    console.error('❌ Funds release job failed:', err.message);
+if (cron && releaseFundsJob) {
+  cron.schedule('0 0 * * *', () => {
+    console.log('⏰ Running daily funds release job...');
+    releaseFundsJob().catch(err => {
+      console.error('❌ Funds release job failed:', err.message);
+    });
   });
-});
-
-// Also run on startup (optional, for immediate testing)
-// releaseFundsJob().catch(err => console.error('❌ Startup funds release failed:', err.message));
+  console.log('✅ Daily funds release cron scheduled (midnight)');
+} else {
+  console.log('⚠️ Funds release cron NOT scheduled. Install node-cron to enable.');
+}
 
 // ═══════════════════════════════════════════════════
 // START SERVER
@@ -320,7 +339,6 @@ cron.schedule('0 0 * * *', () => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`💰 Daily funds release cron scheduled (midnight)`);
 });
 
 module.exports = app;
