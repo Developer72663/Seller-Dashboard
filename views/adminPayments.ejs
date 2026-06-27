@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f5f6fa; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+    .page-header { background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; }
+    .page-header h1 { font-size: 28px; margin-bottom: 8px; }
+    .page-header p { opacity: 0.9; font-size: 14px; }
+
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center; }
+    .stat-card .number { font-size: 28px; font-weight: 700; }
+    .stat-card .label { font-size: 12px; color: #888; margin-top: 5px; text-transform: uppercase; }
+    .stat-card.total .number { color: #667eea; }
+    .stat-card.pending .number { color: #f39c12; }
+    .stat-card.approved .number { color: #27ae60; }
+    .stat-card.rejected .number { color: #e74c3c; }
+    .stat-card.amount .number { color: #9b59b6; }
+
+    .filters { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+    .filters select, .filters input { padding: 10px 15px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+    .filters button { padding: 10px 20px; background: #2c3e50; color: white; border: none; border-radius: 8px; cursor: pointer; }
+
+    .payouts-table { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .payouts-table table { width: 100%; border-collapse: collapse; }
+    .payouts-table th { background: #f8f9fa; padding: 14px; text-align: left; font-size: 11px; text-transform: uppercase; color: #666; font-weight: 600; }
+    .payouts-table td { padding: 14px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    .payouts-table tr:hover { background: #fafbfc; }
+
+    .seller-cell { display: flex; align-items: center; gap: 12px; }
+    .seller-cell img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .seller-cell .name { font-weight: 600; font-size: 14px; color: #333; }
+    .seller-cell .email { font-size: 12px; color: #888; }
+    .seller-cell .phone { font-size: 11px; color: #aaa; }
+
+    .amount-cell { font-size: 20px; font-weight: 700; color: #333; }
+    .amount-cell .method { font-size: 12px; color: #888; margin-top: 4px; }
+
+    .bank-details { font-size: 12px; line-height: 1.6; color: #555; }
+    .bank-details .label { font-weight: 600; color: #333; }
+    .bank-details .value { font-family: monospace; background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
+
+    .status-badge { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-completed { background: #d4edda; color: #155724; }
+    .badge-cancelled { background: #f8d7da; color: #721c24; }
+
+    .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .action-btns button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .btn-approve { background: #27ae60; color: white; }
+    .btn-reject { background: #e74c3c; color: white; }
+    .btn-view { background: #667eea; color: white; }
+
+    .date-cell { font-size: 13px; color: #555; }
+    .date-cell .time { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 450px; }
+    .modal h3 { margin-bottom: 15px; font-size: 18px; }
+    .modal p { font-size: 14px; color: #666; margin-bottom: 15px; }
+    .modal input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
+    .modal textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; min-height: 60px; font-size: 14px; }
+    .modal .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal .modal-btns button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .modal .btn-confirm { background: #27ae60; color: white; }
+    .modal .btn-confirm.reject { background: #e74c3c; }
+    .modal .btn-cancel { background: #f0f0f0; color: #333; }
+
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 25px; }
+    .pagination a, .pagination span { padding: 10px 16px; background: white; border-radius: 8px; text-decoration: none; color: #667eea; font-weight: 500; }
+    .pagination .active { background: #667eea; color: white; }
+    .pagination .disabled { color: #ccc; }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state .icon { font-size: 60px; margin-bottom: 15px; }
+    .empty-state h3 { color: #333; margin-bottom: 8px; }
+    .empty-state p { color: #888; font-size: 14px; }
+
+    .info-banner { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
+    .info-banner strong { display: block; margin-bottom: 5px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>💳 Seller Payments</h1>
+      <p>Review and process seller payout requests. Approve to mark as paid, or reject to return funds to seller wallet.</p>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner">
+      <strong>💡 How payouts work:</strong>
+      When a seller requests a withdrawal, the amount is locked from their wallet. You must manually transfer the money from your business account to the seller's bank/UPI, then click "Mark as Paid". If you reject, the amount returns to the seller's wallet.
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat-card total">
+        <div class="number"><%= stats.total || 0 %></div>
+        <div class="label">Total Requests</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="number"><%= stats.pending || 0 %></div>
+        <div class="label">Pending</div>
+      </div>
+      <div class="stat-card approved">
+        <div class="number"><%= stats.approved || 0 %></div>
+        <div class="label">Approved</div>
+      </div>
+      <div class="stat-card rejected">
+        <div class="number"><%= stats.rejected || 0 %></div>
+        <div class="label">Rejected</div>
+      </div>
+      <div class="stat-card amount">
+        <div class="number">₹<%= (stats.totalAmount || 0).toLocaleString('en-IN') %></div>
+        <div class="label">Pending Amount</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <form method="GET" action="/admin/payments" style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
+        <select name="status">
+          <option value="all" <%= currentStatus === 'all' ? 'selected' : '' %>>All Status</option>
+          <option value="pending" <%= currentStatus === 'pending' ? 'selected' : '' %>>Pending</option>
+          <option value="completed" <%= currentStatus === 'completed' ? 'selected' : '' %>>Approved</option>
+          <option value="cancelled" <%= currentStatus === 'cancelled' ? 'selected' : '' %>>Rejected</option>
+        </select>
+        <input type="text" name="search" placeholder="Search seller name, email, business..." value="<%= searchQuery || '' %>" style="min-width:300px;">
+        <button type="submit">Filter</button>
+        <a href="/admin/payments" style="color:#2c3e50;text-decoration:none;">Clear</a>
+      </form>
+    </div>
+
+    <% if (payouts && payouts.length > 0) { %>
+    <div class="payouts-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Seller</th>
+            <th>Amount</th>
+            <th>Bank / UPI Details</th>
+            <th>Requested</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% payouts.forEach(payout => { %>
+          <tr>
+            <td>
+              <div class="seller-cell">
+                <img src="<%= payout.seller?.profileImageURL || '/imgs/default.png' %>" alt="<%= payout.seller?.fullName %>">
+                <div>
+                  <div class="name"><%= payout.seller?.fullName || 'Unknown' %></div>
+                  <div class="email"><%= payout.seller?.email || '' %></div>
+                  <div class="phone"><%= payout.seller?.businessName || '' %> | <%= payout.seller?.phoneNumber || '' %></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="amount-cell">₹<%= payout.amount.toLocaleString('en-IN') %></div>
+              <div class="method">
+                <%= payout.method === 'upi' ? '💳 UPI' : '🏦 Bank Transfer' %>
+              </div>
+            </td>
+            <td>
+              <div class="bank-details">
+                <% if (payout.method === 'upi' && payout.bankDetails.upiId) { %>
+                  <div><span class="label">UPI ID:</span> <span class="value"><%= payout.bankDetails.upiId %></span></div>
+                <% } else { %>
+                  <% if (payout.bankDetails.accountNumber) { %>
+                    <div><span class="label">A/C:</span> <span class="value">****<%= payout.bankDetails.accountNumber.slice(-4) %></span></div>
+                  <% } %>
+                  <% if (payout.bankDetails.ifsc) { %>
+                    <div><span class="label">IFSC:</span> <span class="value"><%= payout.bankDetails.ifsc %></span></div>
+                  <% } %>
+                  <% if (payout.seller?.bankAccountNumber) { %>
+                    <div><span class="label">Seller A/C:</span> <span class="value">****<%= payout.seller.bankAccountNumber.slice(-4) %></span></div>
+                  <% } %>
+                  <% if (payout.seller?.ifscCode) { %>
+                    <div><span class="label">Seller IFSC:</span> <span class="value"><%= payout.seller.ifscCode %></span></div>
+                  <% } %>
+                <% } %>
+              </div>
+            </td>
+            <td>
+              <div class="date-cell">
+                <%= new Date(payout.requestedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+              </div>
+              <div class="time">
+                <%= new Date(payout.requestedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) %>
+              </div>
+              <% if (payout.processedAt) { %>
+                <div style="font-size:11px;color:#27ae60;margin-top:4px;">
+                  Processed: <%= new Date(payout.processedAt).toLocaleDateString('en-IN') %>
+                </div>
+              <% } %>
+            </td>
+            <td>
+              <span class="status-badge badge-<%= payout.status %>">
+                <%= payout.status === 'completed' ? 'PAID' : payout.status === 'cancelled' ? 'REJECTED' : 'PENDING' %>
+              </span>
+              <% if (payout.rejectionReason) { %>
+                <div style="font-size:11px;color:#e74c3c;margin-top:5px;max-width:150px;">
+                  <%= payout.rejectionReason %>
+                </div>
+              <% } %>
+            </td>
+            <td>
+              <% if (payout.status === 'pending') { %>
+                <div class="action-btns">
+                  <button class="btn-approve" onclick="approvePayout('<%= payout.sellerId %>', '<%= payout._id %>')">✓ Mark as Paid</button>
+                  <button class="btn-reject" onclick="rejectPayout('<%= payout.sellerId %>', '<%= payout._id %>')">✗ Reject</button>
+                </div>
+              <% } else if (payout.status === 'completed') { %>
+                <span style="font-size:12px;color:#27ae60;">✓ Paid</span>
+              <% } else { %>
+                <span style="font-size:12px;color:#e74c3c;">✗ Rejected</span>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (totalPages > 1) { %>
+    <div class="pagination">
+      <% if (hasPrev) { %>
+        <a href="?page=<%= currentPage - 1 %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>">← Prev</a>
+      <% } else { %>
+        <span class="disabled">← Prev</span>
+      <% } %>
+      <% for (let i = 1; i <= totalPages; i++) { %>
+        <% if (i === currentPage) { %>
+          <span class="active"><%= i %></span>
+        <% } else { %>
+          <a href="?page=<%= i %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>"><%= i %></a>
+        <% } %>
+      <% } %>
+      <% if (hasNext) { %>
+        <a href="?page=<%= currentPage + 1 %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>">Next →</a>
+      <% } else { %>
+        <span class="disabled">Next →</span>
+      <% } %>
+    </div>
+    <% } %>
+
+    <% } else { %>
+    <div class="payouts-table">
+      <div class="empty-state">
+        <div class="icon">💳</div>
+        <h3>No payout requests</h3>
+        <p>When sellers request withdrawals, they will appear here for your approval.</p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Approve Modal -->
+  <div class="modal-overlay" id="approveModal">
+    <div class="modal">
+      <h3>✓ Mark as Paid</h3>
+      <p>Enter the payment reference number after manually transferring funds to the seller.</p>
+      <input type="text" id="referenceNumber" placeholder="Payment reference / UTR / Transaction ID">
+      <textarea id="approveNotes" placeholder="Additional notes (optional)"></textarea>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal('approveModal')">Cancel</button>
+        <button class="btn-confirm" onclick="confirmApprove()">Confirm Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="modal-overlay" id="rejectModal">
+    <div class="modal">
+      <h3>✗ Reject Payout</h3>
+      <p>The requested amount will be returned to the seller's wallet. Please provide a reason.</p>
+      <textarea id="rejectReason" placeholder="Enter rejection reason..."></textarea>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal('rejectModal')">Cancel</button>
+        <button class="btn-confirm reject" onclick="confirmReject()">Reject & Return</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentWalletId = null;
+    let currentTransactionId = null;
+
+    function approvePayout(walletId, transactionId) {
+      currentWalletId = walletId;
+      currentTransactionId = transactionId;
+      document.getElementById('approveModal').classList.add('active');
+    }
+
+    function rejectPayout(walletId, transactionId) {
+      currentWalletId = walletId;
+      currentTransactionId = transactionId;
+      document.getElementById('rejectModal').classList.add('active');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+      currentWalletId = null;
+      currentTransactionId = null;
+    }
+
+    async function confirmApprove() {
+      const reference = document.getElementById('referenceNumber').value;
+      const notes = document.getElementById('approveNotes').value;
+      try {
+        const res = await fetch(`/admin/payments/${currentWalletId}/payout/${currentTransactionId}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referenceNumber: reference, notes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Payout marked as paid');
+          location.reload();
+        } else {
+          alert('❌ ' + data.message);
+        }
+      } catch (err) {
+        alert('❌ Error: ' + err.message);
+      }
+      closeModal('approveModal');
+    }
+
+    async function confirmReject() {
+      const reason = document.getElementById('rejectReason').value;
+      if (!reason) { alert('Please enter a rejection reason'); return; }
+      try {
+        const res = await fetch(`/admin/payments/${currentWalletId}/payout/${currentTransactionId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ Payout rejected. Amount returned to seller wallet.');
+          location.reload();
+        } else {
+          alert('❌ ' + data.message);
+        }
+      } catch (err) {
+        alert('❌ Error: ' + err.message);
+      }
+      closeModal('rejectModal');
+    }
+  </script>
+</body>
+</html>

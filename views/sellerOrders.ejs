@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #f5f6fa; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 25px; }
+    .page-header h1 { font-size: 28px; margin-bottom: 8px; }
+    .page-header p { opacity: 0.9; font-size: 14px; }
+
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); text-align: center; }
+    .stat-card .number { font-size: 32px; font-weight: 700; color: #667eea; }
+    .stat-card .label { font-size: 13px; color: #666; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card.pending .number { color: #f39c12; }
+    .stat-card.processing .number { color: #3498db; }
+    .stat-card.delivered .number { color: #27ae60; }
+    .stat-card.cancelled .number { color: #e74c3c; }
+
+    .filters { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+    .filters select, .filters input { padding: 10px 15px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+    .filters button { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .filters button:hover { background: #5a6fd6; }
+
+    .orders-table { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .orders-table table { width: 100%; border-collapse: collapse; }
+    .orders-table th { background: #f8f9fa; padding: 15px; text-align: left; font-size: 12px; text-transform: uppercase; color: #666; font-weight: 600; }
+    .orders-table td { padding: 15px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    .orders-table tr:hover { background: #fafbfc; }
+
+    .order-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-confirmed { background: #d1ecf1; color: #0c5460; }
+    .badge-processing { background: #cce5ff; color: #004085; }
+    .badge-shipped { background: #d4edda; color: #155724; }
+    .badge-delivered { background: #d4edda; color: #155724; }
+    .badge-cancelled { background: #f8d7da; color: #721c24; }
+    .badge-returned { background: #f8d7da; color: #721c24; }
+
+    .product-cell { display: flex; align-items: center; gap: 12px; }
+    .product-cell img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+    .product-info .title { font-weight: 600; font-size: 14px; color: #333; }
+    .product-info .qty { font-size: 12px; color: #888; margin-top: 2px; }
+    .product-info .price { font-size: 13px; color: #667eea; font-weight: 600; margin-top: 2px; }
+
+    .order-alert { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
+    .order-alert strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .order-alert.new { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .order-alert.ready { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+
+    .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .action-btns button { padding: 6px 14px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; }
+    .btn-confirm { background: #667eea; color: white; }
+    .btn-process { background: #3498db; color: white; }
+    .btn-ship { background: #9b59b6; color: white; }
+    .btn-deliver { background: #27ae60; color: white; }
+    .btn-cancel { background: #e74c3c; color: white; }
+    .btn-track { background: #f39c12; color: white; }
+
+    .amount { font-weight: 700; color: #333; font-size: 15px; }
+    .seller-earnings { font-size: 12px; color: #27ae60; margin-top: 3px; }
+
+    .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 25px; }
+    .pagination a, .pagination span { padding: 10px 16px; background: white; border-radius: 8px; text-decoration: none; color: #667eea; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .pagination .active { background: #667eea; color: white; }
+    .pagination .disabled { color: #ccc; pointer-events: none; }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state img { width: 120px; opacity: 0.3; margin-bottom: 20px; }
+    .empty-state h3 { color: #333; margin-bottom: 8px; }
+    .empty-state p { color: #888; font-size: 14px; }
+
+    .return-policy-note { font-size: 11px; color: #888; margin-top: 5px; }
+    .return-policy-note.active { color: #e74c3c; }
+    .return-policy-note.ended { color: #27ae60; }
+
+    @media (max-width: 768px) {
+      .orders-table { overflow-x: auto; }
+      .orders-table table { min-width: 800px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>📦 My Orders</h1>
+      <p>Manage your orders. You will only see product details — customer information is kept private.</p>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="number"><%= stats.total || 0 %></div>
+        <div class="label">Total Orders</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="number"><%= stats.pending || 0 %></div>
+        <div class="label">Pending</div>
+      </div>
+      <div class="stat-card processing">
+        <div class="number"><%= stats.processing || 0 %></div>
+        <div class="label">Processing</div>
+      </div>
+      <div class="stat-card delivered">
+        <div class="number"><%= stats.delivered || 0 %></div>
+        <div class="label">Delivered</div>
+      </div>
+      <div class="stat-card cancelled">
+        <div class="number"><%= stats.cancelled || 0 %></div>
+        <div class="label">Cancelled</div>
+      </div>
+      <div class="stat-card">
+        <div class="number">₹<%= (stats.totalRevenue || 0).toLocaleString('en-IN') %></div>
+        <div class="label">Total Earnings</div>
+      </div>
+    </div>
+
+    <div class="filters">
+      <form method="GET" action="/seller/orders" style="display:flex;gap:15px;align-items:center;flex-wrap:wrap;">
+        <select name="status">
+          <option value="">All Status</option>
+          <option value="pending" <%= currentStatus === 'pending' ? 'selected' : '' %>>Pending</option>
+          <option value="confirmed" <%= currentStatus === 'confirmed' ? 'selected' : '' %>>Confirmed</option>
+          <option value="processing" <%= currentStatus === 'processing' ? 'selected' : '' %>>Processing</option>
+          <option value="shipped" <%= currentStatus === 'shipped' ? 'selected' : '' %>>Shipped</option>
+          <option value="delivered" <%= currentStatus === 'delivered' ? 'selected' : '' %>>Delivered</option>
+          <option value="cancelled" <%= currentStatus === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+        </select>
+        <input type="text" name="search" placeholder="Search by order number..." value="<%= searchQuery || '' %>">
+        <button type="submit">Filter</button>
+        <a href="/seller/orders" style="color:#667eea;text-decoration:none;font-size:14px;">Clear</a>
+      </form>
+    </div>
+
+    <% if (orders && orders.length > 0) { %>
+    <div class="orders-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Order Info</th>
+            <th>Product Details</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Return Policy</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(order => { %>
+          <tr>
+            <td>
+              <div style="font-weight:700;font-size:14px;color:#333;">#<%= order.orderNumber %></div>
+              <div style="font-size:12px;color:#888;margin-top:4px;">
+                <%= new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) %>
+              </div>
+              <div style="font-size:11px;color:#aaa;margin-top:2px;">
+                <%= new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) %>
+              </div>
+            </td>
+            <td>
+              <% order.items.forEach(item => { %>
+              <div class="product-cell" style="margin-bottom:8px;">
+                <img src="<%= item.productImage || '/images/no-image.png' %>" alt="<%= item.productTitle %>">
+                <div class="product-info">
+                  <div class="title"><%= item.productTitle %></div>
+                  <div class="qty">Qty: <%= item.quantity %> × ₹<%= item.price %></div>
+                  <% if (item.variant && item.variant.colorName) { %>
+                    <div class="qty" style="color:#667eea;"><%= item.variant.colorName %> <%= item.variant.size ? '/ ' + item.variant.size : '' %></div>
+                  <% } %>
+                </div>
+              </div>
+              <% }) %>
+
+              <!-- PRIVACY MESSAGE: No customer details shown -->
+              <% if (order.status === 'pending') { %>
+                <div class="order-alert new" style="margin-top:10px;">
+                  <strong>🎉 New Order Received!</strong>
+                  Please ready your product for shipping.
+                </div>
+              <% } else if (order.status === 'confirmed') { %>
+                <div class="order-alert ready" style="margin-top:10px;">
+                  <strong>✅ Order Confirmed</strong>
+                  Please pack and ship the product soon.
+                </div>
+              <% } %>
+            </td>
+            <td>
+              <div class="amount">₹<%= (order.totalAmount || 0).toLocaleString('en-IN') %></div>
+              <div class="seller-earnings">You earn: ₹<%= (order.sellerEarnings || 0).toLocaleString('en-IN') %></div>
+              <% if (order.shippingCost > 0) { %>
+                <div style="font-size:11px;color:#888;margin-top:3px;">+ ₹<%= order.shippingCost %> shipping</div>
+              <% } %>
+            </td>
+            <td>
+              <span class="order-badge badge-<%= order.status %>">
+                <%= order.status.replace('_', ' ').toUpperCase() %>
+              </span>
+              <div style="font-size:11px;color:#888;margin-top:5px;">
+                <%= order.paymentStatus === 'paid' ? '✓ Paid' : '⏳ Pending Payment' %>
+              </div>
+            </td>
+            <td>
+              <% if (order.status === 'delivered') { %>
+                <% if (order.isReturnPeriodActive) { %>
+                  <div class="return-policy-note active">
+                    🔒 Return period active<br>
+                    Ends: <%= new Date(order.returnPolicyEndDate).toLocaleDateString('en-IN') %>
+                  </div>
+                <% } else if (order.fundsReleased) { %>
+                  <div class="return-policy-note ended">
+                    ✅ Funds released to wallet<br>
+                    ₹<%= (order.sellerEarnings || 0).toLocaleString('en-IN') %> credited
+                  </div>
+                <% } else { %>
+                  <div class="return-policy-note ended">
+                    ⏳ Return period ended<br>
+                    Funds releasing soon
+                  </div>
+                <% } %>
+              <% } else if (order.status === 'cancelled') { %>
+                <div class="return-policy-note" style="color:#e74c3c;">Order cancelled</div>
+              <% } else { %>
+                <div class="return-policy-note">—</div>
+              <% } %>
+            </td>
+            <td>
+              <div class="action-btns">
+                <% if (order.status === 'pending') { %>
+                  <button class="btn-confirm" onclick="updateStatus('<%= order._id %>', 'confirmed')">Confirm</button>
+                  <button class="btn-cancel" onclick="cancelOrder('<%= order._id %>')">Cancel</button>
+                <% } else if (order.status === 'confirmed') { %>
+                  <button class="btn-process" onclick="updateStatus('<%= order._id %>', 'processing')">Process</button>
+                  <button class="btn-cancel" onclick="cancelOrder('<%= order._id %>')">Cancel</button>
+                <% } else if (order.status === 'processing') { %>
+                  <button class="btn-ship" onclick="updateStatus('<%= order._id %>', 'shipped')">Ship</button>
+                <% } else if (order.status === 'shipped') { %>
+                  <button class="btn-deliver" onclick="updateStatus('<%= order._id %>', 'delivered')">Deliver</button>
+                  <button class="btn-track" onclick="addTracking('<%= order._id %>')">Add Tracking</button>
+                <% } else if (order.status === 'delivered') { %>
+                  <span style="font-size:12px;color:#27ae60;">✓ Completed</span>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <% if (totalPages > 1) { %>
+    <div class="pagination">
+      <% if (hasPrev) { %>
+        <a href="?page=<%= currentPage - 1 %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>">← Prev</a>
+      <% } else { %>
+        <span class="disabled">← Prev</span>
+      <% } %>
+
+      <% for (let i = 1; i <= totalPages; i++) { %>
+        <% if (i === currentPage) { %>
+          <span class="active"><%= i %></span>
+        <% } else { %>
+          <a href="?page=<%= i %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>"><%= i %></a>
+        <% } %>
+      <% } %>
+
+      <% if (hasNext) { %>
+        <a href="?page=<%= currentPage + 1 %><%= currentStatus ? '&status=' + currentStatus : '' %><%= searchQuery ? '&search=' + searchQuery : '' %>">Next →</a>
+      <% } else { %>
+        <span class="disabled">Next →</span>
+      <% } %>
+    </div>
+    <% } %>
+
+    <% } else { %>
+    <div class="orders-table">
+      <div class="empty-state">
+        <div style="font-size:60px;margin-bottom:20px;">📭</div>
+        <h3>No orders yet</h3>
+        <p>When customers place orders for your products, they will appear here.</p>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <script>
+    async function updateStatus(orderId, status) {
+      try {
+        const res = await fetch(`/seller/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, note: `Status updated to ${status}` })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Status updated successfully!');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to update status');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function cancelOrder(orderId) {
+      const reason = prompt('Enter cancellation reason (optional):');
+      if (reason === null) return;
+      try {
+        const res = await fetch(`/seller/orders/${orderId}/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Order cancelled');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to cancel');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function addTracking(orderId) {
+      const tracking = prompt('Enter tracking number:');
+      if (!tracking) return;
+      // Implement tracking update API call
+      alert('Tracking added: ' + tracking);
+    }
+  </script>
+</body>
+</html>
